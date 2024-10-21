@@ -6,6 +6,8 @@ class Behrman():
     ## 属性
     # 分别表示棋盘的长和宽
     n, m = None, None
+    # 最低容忍误差（迭代终止条件）
+    tolerances = 0.000001
 
     # 行动
     xx = [0, 0, 0, -1, 1]
@@ -17,11 +19,13 @@ class Behrman():
 
     ## 矩阵
     # 棋盘地图矩阵
-    chessboard = [["*#***"],
-                  ["*#*#*"],
-                  ["*#x#*"],
-                  ["*###*"],
-                  ["*****"], ]
+    chessboard = [["*#*#*****"],
+                  ["*#*#*#*#*"],
+                  ["*#*#x#*#*"],
+                  ["*#*###*#*"],
+                  ["*#*****#*"],
+                  ["*#######*"],
+                  ["*********"]]
     # 惩罚值矩阵
     Punishment = None
     # 策略矩阵，一共有n*m个状态，这里将其放到二维张量中
@@ -116,9 +120,9 @@ class Behrman():
 
                 # 累计误差值
                 tolerances_sum += new_states[x][y] - self.states[x][y]
-        self.debug(self.states)
-        print("-----")
-        self.debug(new_states)
+        # self.debug(self.states)
+        # print("-----")
+        # self.debug(new_states)
         # 更新状态值函数
         self.states = new_states
         return tolerances_sum
@@ -135,6 +139,22 @@ class Behrman():
                 print(self.s[self.policy[x][y]], end="\t")
             print()
 
+    def run(self):
+        """
+        算法执行
+        :return:None
+        """
+        count = 0
+        self.get_policy()
+        while self.get_states() > self.tolerances:
+            # 更新策略
+            self.get_policy()
+            count += 1
+        print("最优贝尔曼算法实现\n迷宫如下")
+        self.debug(behrman.chessboard)
+        print(f'一共迭代了{count}得到结果,最终策略如下')
+        self.show()
+
 
     def __init__(self):
         # 计算长宽
@@ -148,17 +168,4 @@ class Behrman():
 
 if __name__ == '__main__':
     behrman = Behrman()
-
-    # 记录迭代的次数
-    count = 0
-    behrman.get_policy()
-
-    while behrman.get_states() > 0.001:
-        # 更新策略
-        behrman.get_policy()
-        count += 1
-    print("最优贝尔曼算法实现\n棋盘如下")
-    behrman.debug(behrman.chessboard)
-    print(f'一共迭代了{count}得到结果,最终策略如下')
-    behrman.show()
-    print("************")
+    behrman.run()
