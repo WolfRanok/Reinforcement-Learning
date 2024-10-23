@@ -7,7 +7,8 @@ class Behrman():
     # 分别表示棋盘的长和宽
     n, m = None, None
     # 最低容忍误差（迭代终止条件）
-    tolerances = 0.000001
+    tolerances = 1e-15
+    
 
     # 行动
     xx = [0, 0, 0, -1, 1]
@@ -15,7 +16,7 @@ class Behrman():
     s = "O←→↑↓"
 
     # 参数
-    _lambda = 0.5
+    _lambda = 0.9
 
     ## 矩阵
     # 棋盘地图矩阵
@@ -62,7 +63,7 @@ class Behrman():
     def get_Punishment(self):
         """
         计算惩罚值矩阵
-        :return:
+        :return:None
         """
 
         self.Punishment = [[None for _ in range(len(x))] for x in self.chessboard]
@@ -120,9 +121,7 @@ class Behrman():
 
                 # 累计误差值
                 tolerances_sum += new_states[x][y] - self.states[x][y]
-        # self.debug(self.states)
-        # print("-----")
-        # self.debug(new_states)
+
         # 更新状态值函数
         self.states = new_states
         return tolerances_sum
@@ -139,22 +138,88 @@ class Behrman():
                 print(self.s[self.policy[x][y]], end="\t")
             print()
 
-    def run(self):
+    def run_value_iteration(self):
         """
-        算法执行
+        值迭代，算法执行
+        状态和策略一起迭代优化
         :return:None
         """
         count = 0
-        self.get_policy()
-        while self.get_states() > self.tolerances:
+        error = 1
+
+        while error > self.tolerances:
             # 更新策略
             self.get_policy()
+
+            # 更新状态并记录误差
+            error = self.get_states()
             count += 1
-        print("最优贝尔曼算法实现\n迷宫如下")
+        print("最优贝尔曼算法(值迭代)实现\n迷宫如下")
         self.debug(behrman.chessboard)
         print(f'一共迭代了{count}得到结果,最终策略如下')
         self.show()
 
+    def run_policy_iteration(self):
+        """
+        策略迭代，算法执行
+        先迭代完状态，再计算最优策略
+        :return:None
+        """
+        count = 0
+
+        print("最优贝尔曼算法(策略迭代)实现\n迷宫如下")
+        self.debug(behrman.chessboard)
+        print("*"*16)
+
+        while True:
+            count += 1
+            count_now = 0
+
+            # Policy evaluation
+            while self.get_states() > self.tolerances or count_now + count == 1:    # count_now + count 这一步是为了保证第一次可以执行
+                count_now += 1
+
+            if count_now == 0:
+                print(f"策略迭代算法在{count-1}次迭代后收敛")
+                break
+            else:
+                print(f"第{count}次迭代，状态在{count_now}次内部迭代之后收敛")
+
+            # 更新策略
+            self.get_policy()
+
+        print("最终策略如下")
+        self.show()
+
+    def run_truncated_policy_iteration(self, truncated_count=10):
+        """
+        截断式迭代算法，算法实现
+        介于值迭代和策略迭代之间从一种算法，在做状态迭代时按照指定的迭代次数。
+        :param truncated_count: 指定迭代次数，默认为10
+        :return: None
+        """
+        count = 0
+        flag = True
+
+        while flag:
+            # 指定做truncated_count次的状态优化
+            for i in range(truncated_count):
+                # 达到停止条件
+                if i == 1 and self.get_states() < self.tolerances and count > 0:
+                    flag = False
+                    break
+                else:
+                    self.get_states()
+            # 更新策略
+            self.get_policy()
+            count += 1
+
+        print("最优贝尔曼算法(截断式策略迭代)实现\n迷宫如下")
+        self.debug(behrman.chessboard)
+        print("*" * 16)
+        print(f"算法在迭代{count}次后收敛")
+        print("最终策略如下")
+        self.show()
 
     def __init__(self):
         # 计算长宽
@@ -168,4 +233,4 @@ class Behrman():
 
 if __name__ == '__main__':
     behrman = Behrman()
-    behrman.run()
+    behrman.run_truncated_policy_iteration()
