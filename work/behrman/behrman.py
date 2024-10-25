@@ -8,7 +8,7 @@ class Behrman():
     n, m = None, None
     # 最低容忍误差（迭代终止条件）
     tolerances = 1e-15
-    
+
 
     # 行动
     xx = [0, 0, 0, -1, 1]

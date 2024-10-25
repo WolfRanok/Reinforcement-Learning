@@ -1,4 +1,5 @@
 import random
+from copy import deepcopy as cp
 """
 该脚本用基础蒙特卡洛算法，解迷宫寻址问题
 """
@@ -21,16 +22,16 @@ class Board:
     yy = [0, -1, 1, 0, 0]
     s = "O←→↑↓"
 
-    # 参数
+    # 参数，这个值越大越远视，越小越近视
     _lambda = 0.9
 
     ## 矩阵
     # 棋盘地图矩阵
-    chessboard = [["*#***"],
-                  ["*#*#*"],
-                  ["*#x#*"],
-                  ["*###*"],
-                  ["*****"],]
+    chessboard = [["*****"],
+                  ["*##**"],
+                  ["**#**"],
+                  ["*#X#*"],
+                  ["*#***"],]
     # 惩罚值矩阵
     Punishment = None
     # 策略矩阵，一共有n*m个状态，这里将其放到二维张量中
@@ -63,7 +64,7 @@ class Board:
                 elif self.chessboard[i][j] == "#":
                     self.Punishment[i][j] = self.penalty_value
                 else:
-                    self.Punishment[i][j] = 1
+                    self.Punishment[i][j] = 100
         return self.Punishment
 
     @staticmethod
@@ -234,19 +235,21 @@ class MCBasic(Board):
 class MCE_Greedy(Board):
     ## 属性
     # 该值应该的值域：[0,1]，用于表示非最优策略的概率占比大小
-    varepsilon = 0.4
+    varepsilon = 0.2
     # 每个状态的行动数
     sum_actions = 5
     # 定义迭代的次数
-    iteration_count = 10000
+    iteration_count = 1000
     # 决策轨迹的长度
-    track_length = 100
+    track_length = 1000
 
     ## 矩阵
     # 策略概率矩阵矩阵（三维张量）
     states_action_probabilities = None
     # 每个策略的回报矩阵（三维张量）
     states_action_values = None
+    # 每个策略被遍历到的次数（三维张量)
+    states_action_count = None
 
     def init_MCE_Greedy__matrix(self):
         """
@@ -255,13 +258,17 @@ class MCE_Greedy(Board):
         """
         self.init_matrix()
 
-        # 这里定义第一个策略概率最大
-        action_probabilities = [1-(self.sum_actions-1)*self.varepsilon/self.sum_actions, self.varepsilon/self.sum_actions, self.varepsilon/self.sum_actions, self.varepsilon/self.sum_actions, self.varepsilon/self.sum_actions]
-        self.states_action_probabilities = [[action_probabilities for _ in range(self.m)] for _ in range(self.n)]
+        # 初始时每一个action应该要有相同的概率
+        action_probabilities = [1 / self.sum_actions] * self.sum_actions
+        self.states_action_probabilities = [[cp(action_probabilities) for _ in range(self.m)] for _ in range(self.n)]
 
         # 初始化回报
-        action_values = [0, 0, 0, 0, 0]
-        self.states_action_values = [[action_values for _ in range(self.m)] for _ in range(self.n)]
+        action_values = [0] * self.sum_actions
+        self.states_action_values = [[cp(action_values) for _ in range(self.m)] for _ in range(self.n)]
+
+        # 初始化计数矩阵
+        action_count = [0] * self.sum_actions
+        self.states_action_count = [[cp(action_count) for _ in range(self.m)] for _ in range(self.n)]
 
     def get_action(self, x, y):
         """
@@ -342,7 +349,14 @@ class MCE_Greedy(Board):
 
                 if ((x, y), action) not in Hash:
                     Hash.add(((x, y), action))
-                    self.states_action_values[x][y][action] = g # 只更新行动的v值，不需要更新状态值
+
+                    # 计数器加1
+                    self.states_action_count[x][y][action] += 1
+                    k = self.states_action_count[x][y][action]
+
+                    # # (加权平均更新)这一步超前了，使用了motivating example的迭代更新求平均值的方法，这样就不需要一个个保存下来求了,测试结果表明这一步并不好
+                    # self.states_action_values[x][y][action] = self.states_action_values[x][y][action] -(self.states_action_values[x][y][action] - g) / k # 只更新行动的v值，不需要更新状态值
+                    self.states_action_values[x][y][action] = g
 
                     # 找到最优行动决策
                     max_index = 0
@@ -369,8 +383,10 @@ class MCE_Greedy(Board):
         print("优化版蒙特卡洛算法实现，以下为棋盘结构")
         self.debug(self.chessboard)
         print("*"*20)
+        self.debug(self.states_action_values)
         print(f"迭代{self.iteration_count}次后的最优决策如下")
         self.show()
+
 
     def __init__(self):
         # 计算迷宫的长和宽
